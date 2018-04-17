@@ -181,7 +181,7 @@ public class MavenReleaseWrapper extends BuildWrapper {
             boolean modified;
             try {
                 log(listener, "Chֹanging POMs to release version");
-                modified = changeVersions(mavenBuild, releaseAction, true, vcsUrl);
+                modified = changeVersions(mavenBuild, releaseAction, true, vcsUrl, listener);
             } catch (SnapshotNotAllowedException e) {
                 log(listener, "ERROR: " + e.getMessage());
                 // abort the build
@@ -221,7 +221,7 @@ public class MavenReleaseWrapper extends BuildWrapper {
                                 AbstractScmCoordinator.isSvn(build.getProject())
                                 ? scmCoordinator.getRemoteUrlForPom() : null;
                         log(listener, "Changing POMs to next development version");
-                        boolean modified = changeVersions(mavenBuild, releaseAction, false, scmUrl);
+                        boolean modified = changeVersions(mavenBuild, releaseAction, false, scmUrl, listener);
                         log(listener, "POMs changed, modified flag: " + modified);
                         scmCoordinator.afterDevelopmentVersionChange(modified);
                     }
@@ -245,25 +245,29 @@ public class MavenReleaseWrapper extends BuildWrapper {
     }
 
     private boolean changeVersions(MavenModuleSetBuild mavenBuild, ReleaseAction release, boolean releaseVersion,
-                                   String scmUrl) throws IOException, InterruptedException {
+                                   String scmUrl, BuildListener listener) throws IOException, InterruptedException {
         FilePath moduleRoot = mavenBuild.getModuleRoot();
         // get the active modules only
         Collection<MavenModule> modules = mavenBuild.getProject().getDisabledModules(false);
+        log(listener, "Enabled maven modules: " + Arrays.toString(modules.toArray()));
 
         Map<ModuleName, String> modulesByName = Maps.newHashMap();
         for (MavenModule module : modules) {
             String version = releaseVersion ? release.getReleaseVersionFor(module.getModuleName()) :
                     release.getNextVersionFor(module.getModuleName());
             modulesByName.put(module.getModuleName(), version);
+            log(listener, "Maven module " + module.getModuleName() + ":" + version);
         }
 
         boolean modified = false;
         for (MavenModule mavenModule : modules) {
             FilePath pomPath = new FilePath(moduleRoot, getRelativePomPath(mavenModule, mavenBuild));
-            debuggingLogger.fine("Changing version of pom: " + pomPath);
+            debuggingLogger.info("Changing version of pom: " + pomPath);
+            log(listener, "Changing version of pom: " + pomPath + ".");
             scmCoordinator.edit(pomPath);
             modified |= pomPath.act(
                     new PomTransformer(mavenModule.getModuleName(), modulesByName, scmUrl, releaseVersion));
+            log(listener, "Modified flag: " + modified + ".");
         }
         return modified;
     }
