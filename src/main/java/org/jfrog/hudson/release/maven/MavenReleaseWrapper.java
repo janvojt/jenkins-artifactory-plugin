@@ -222,6 +222,7 @@ public class MavenReleaseWrapper extends BuildWrapper {
                                 ? scmCoordinator.getRemoteUrlForPom() : null;
                         log(listener, "Changing POMs to next development version");
                         boolean modified = changeVersions(mavenBuild, releaseAction, false, scmUrl);
+                        log(listener, "POMs changed, modified flag: " + modified);
                         scmCoordinator.afterDevelopmentVersionChange(modified);
                     }
                 } catch (Exception e) {

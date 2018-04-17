@@ -42,6 +42,7 @@ import org.jfrog.hudson.release.scm.AbstractScmManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -145,11 +146,18 @@ public class GitManager extends AbstractScmManager<GitSCM> {
         }
     }
 
-    public void push(final ReleaseRepository releaseRepository, final String branch) throws Exception {
+    public void push(final ReleaseRepository releaseRepository, final String branch) throws IOException, InterruptedException {
         GitClient client = getGitClient(releaseRepository);
 
         log(buildListener, String.format("Pushing branch '%s' to '%s'", branch, releaseRepository.getGitUri()));
-        client.push().tags(true).to(new URIish(releaseRepository.getTargetRepoPrivateUri()))
+
+        URIish releaseRepoUri;
+        try {
+            releaseRepoUri = new URIish(releaseRepository.getTargetRepoPrivateUri());
+        } catch (URISyntaxException e) {
+            throw new GitException("Bad private release repository URI, was provided with '" + releaseRepository.getTargetRepoPrivateUri() + "'.");
+        }
+        client.push().tags(true).to(releaseRepoUri)
             .ref("refs/heads/" + branch).timeout(10).execute();
     }
 
